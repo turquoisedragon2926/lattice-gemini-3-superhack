@@ -25,7 +25,7 @@ export class GeminiForwardSimulator implements ForwardSimulator {
     const compactInput = JSON.stringify({ frameId, horizon, state }, null, 2)
 
     const response = await this.getClient().models.generateContent({
-      model: 'gemini-2.5-flash-preview-05-20',
+      model: 'gemini-3-flash-preview',
       contents: [
         { role: 'user', parts: [{ text: PROMPT + '\n\n## Current State\n\n```json\n' + compactInput + '\n```' }] },
       ],
@@ -52,6 +52,7 @@ export class GeminiForwardSimulator implements ForwardSimulator {
       gameId,
       playId,
       frameCount: frames.length,
+      events: {},
       players,
       frames,
       source: 'gemini',

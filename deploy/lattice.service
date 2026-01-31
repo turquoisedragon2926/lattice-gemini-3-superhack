@@ -1,0 +1,16 @@
+[Unit]
+Description=Lattice NFL Analytics
+After=network.target
+
+[Service]
+Type=simple
+User=lattice
+WorkingDirectory=/home/lattice/lattice
+ExecStart=/usr/bin/node server/dist/index.js
+Restart=always
+RestartSec=5
+Environment=PORT=3000
+EnvironmentFile=/home/lattice/lattice/.env
+
+[Install]
+WantedBy=multi-user.target

@@ -2,12 +2,12 @@ export interface PlayData {
   gameId: number | null
   playId: number | null
   meta?: {
-    quarter: number
-    down: number
-    yardsToGo: number
-    offense: string
-    defense: string
-    description: string
+    quarter?: number
+    down?: number
+    yardsToGo?: number
+    offense?: string
+    defense?: string
+    description?: string
   }
   frameCount: number
   events?: Record<string, string>

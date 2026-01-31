@@ -51,9 +51,6 @@ export function FunModeOverlay() {
   const exitFunMode = useFunModeStore((s) => s.exitFunMode)
 
   const loadPlay = useStore((s) => s.loadPlay)
-  const simulating = useStore((s) => s.simulating)
-  const runSimulation = useStore((s) => s.runSimulation)
-  const setSimEngine = useStore((s) => s.setSimEngine)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -157,21 +154,13 @@ export function FunModeOverlay() {
   }
 
   // ── Interactive Phase ──
+  // Normal Controls HUD is visible during this phase (for drag/simulate flow).
+  // We only render the Exit button here.
   if (funPhase === 'interactive') {
     return (
-      <div className="funmode-interactive">
-        <button
-          className="funmode-btn"
-          onClick={() => {
-            setSimEngine('gemini')
-            runSimulation()
-          }}
-          disabled={simulating}
-        >
-          {simulating ? 'Simulating...' : 'Simulate'}
-        </button>
+      <div className="funmode-interactive" style={{ justifyContent: 'flex-end', paddingRight: 32 }}>
         <button className="funmode-btn funmode-btn-exit" onClick={exitFunMode}>
-          Exit
+          Exit Fun Mode
         </button>
       </div>
     )

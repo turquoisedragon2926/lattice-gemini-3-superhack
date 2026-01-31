@@ -37,14 +37,18 @@ export function StatsHUD() {
     <div className={styles.container}>
       {meta && (
         <div className={styles.meta}>
-          <div className={styles.metaTeams}>
-            {meta.offense} vs {meta.defense}
-          </div>
-          <div>
-            Q{meta.quarter} &middot; {meta.down}
-            {meta.down === 1 ? 'st' : meta.down === 2 ? 'nd' : meta.down === 3 ? 'rd' : 'th'}{' '}
-            &amp; {meta.yardsToGo}
-          </div>
+          {meta.offense && meta.defense && (
+            <div className={styles.metaTeams}>
+              {meta.offense} vs {meta.defense}
+            </div>
+          )}
+          {meta.quarter != null && meta.down != null && meta.yardsToGo != null && (
+            <div>
+              Q{meta.quarter} &middot; {meta.down}
+              {meta.down === 1 ? 'st' : meta.down === 2 ? 'nd' : meta.down === 3 ? 'rd' : 'th'}{' '}
+              &amp; {meta.yardsToGo}
+            </div>
+          )}
         </div>
       )}
 

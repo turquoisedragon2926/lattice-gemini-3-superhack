@@ -13,7 +13,8 @@ const GROUNDED_EVENTS = new Set([
 
 function getBallPhase(play: PlayData, frameIndex: number): BallPhase {
   if (!play.events) return 'held'
-  for (let i = frameIndex; i >= 0; i--) {
+  const maxIdx = Math.min(frameIndex, play.frames.length - 1)
+  for (let i = maxIdx; i >= 0; i--) {
     const event = play.events[String(play.frames[i].id)]
     if (!event) continue
     if (AIRBORNE_EVENTS.has(event)) return 'airborne'
@@ -44,12 +45,34 @@ function getAirborneProgress(play: PlayData, frameIndex: number): number {
   return Math.max(0, Math.min(1, (frameIndex - passStart) / duration))
 }
 
-/** Scan backwards through recent frames to find position for a player (max 3 frames back) */
+/** Scan backwards to find position for a player.
+ *  For sparse data (e.g. Gemini/mock): extrapolate from last known position + velocity
+ *  so players don't freeze in place. */
 function getPlayerPosition(play: PlayData, frameIndex: number, id: string): [number, number] | undefined {
-  const minFrame = Math.max(0, frameIndex - 3)
-  for (let i = frameIndex; i >= minFrame; i--) {
+  const clampedIndex = Math.min(frameIndex, play.frames.length - 1)
+  if (clampedIndex < 0) return undefined
+
+  // Check current frame first
+  const currentPos = play.frames[clampedIndex]?.positions[id]
+  if (currentPos) return currentPos
+
+  // Scan backwards to find the last known position
+  for (let i = clampedIndex - 1; i >= 0; i--) {
     const pos = play.frames[i].positions[id]
-    if (pos) return pos
+    if (pos) {
+      // Extrapolate using velocity if available
+      const vel = play.frames[i].velocities[id]
+      const dt = (clampedIndex - i) * 0.1 // frames are 10Hz
+      if (vel && (vel[0] !== 0 || vel[1] !== 0)) {
+        // Damped extrapolation — velocity decays over time
+        const damping = Math.exp(-1.5 * dt)
+        return [
+          pos[0] + vel[0] * dt * damping,
+          pos[1] + vel[1] * dt * damping,
+        ]
+      }
+      return pos
+    }
   }
   return undefined
 }
@@ -71,6 +94,7 @@ export function PlayerLayer() {
 
   const ballOverride = dragOverrides['ball']
   const ballPos = ballOverride || getPlayerPosition(currentPlay, currentFrame, 'ball')
+  const ballNextPos = !ballOverride ? getPlayerPosition(currentPlay, currentFrame + 1, 'ball') : undefined
   const isDraggable = !playing
   const ballPhase = getBallPhase(currentPlay, currentFrame)
   const airborneProgress = getAirborneProgress(currentPlay, currentFrame)
@@ -83,6 +107,7 @@ export function PlayerLayer() {
         const override = dragOverrides[id]
         const pos = override || getPlayerPosition(currentPlay, currentFrame, id)
         if (!pos) return null
+        const nextPos = !override ? getPlayerPosition(currentPlay, currentFrame + 1, id) : undefined
         return (
           <PlayerTotem
             key={id}
@@ -93,6 +118,8 @@ export function PlayerLayer() {
             team={player.team === 'home' ? 'home' : 'away'}
             targetX={pos[0]}
             targetY={pos[1]}
+            nextX={nextPos?.[0]}
+            nextY={nextPos?.[1]}
             selected={selectedPlayer === id}
             isEgoTarget={selectedPlayer === id && cameraMode === 'ego'}
             onSelect={() => setSelectedPlayer(id)}
@@ -105,6 +132,8 @@ export function PlayerLayer() {
         <Ball
           x={ballPos[0]}
           y={ballPos[1]}
+          nextX={ballNextPos?.[0]}
+          nextY={ballNextPos?.[1]}
           phase={ballPhase}
           airborneProgress={airborneProgress}
           selected={selectedPlayer === 'ball'}

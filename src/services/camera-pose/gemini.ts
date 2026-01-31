@@ -26,7 +26,7 @@ export class GeminiCameraPoseEstimator {
 
   async estimate(base64: string): Promise<CameraPoseResult> {
     const response = await this.getClient().models.generateContent({
-      model: 'gemini-2.5-flash-preview-05-20',
+      model: 'gemini-3-flash-preview',
       contents: [
         {
           role: 'user',

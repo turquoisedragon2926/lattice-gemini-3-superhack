@@ -28,6 +28,13 @@ app.use('/api/extract', extractRouter)
 app.use('/api/stats', statsRouter)
 app.use('/api/camera-pose', cameraPoseRouter)
 
+// Serve frontend static files in production
+const frontendDist = resolve(__dirname, '../../frontend/dist')
+app.use(express.static(frontendDist))
+app.get('*', (_req, res) => {
+  res.sendFile(resolve(frontendDist, 'index.html'))
+})
+
 app.listen(PORT, () => {
   console.log(`Lattice API server running on http://localhost:${PORT}`)
 })

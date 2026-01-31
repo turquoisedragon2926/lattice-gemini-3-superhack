@@ -3,7 +3,9 @@ import { useFrame } from '@react-three/fiber'
 import { Billboard, Text, Line, Ring } from '@react-three/drei'
 import * as THREE from 'three'
 import { CYAN_HEX, WHITE_HEX, toScene } from '../utils/constants'
+import { useStore } from '../store'
 import { lerp } from '../utils/interpolation'
+import { playbackAlpha } from '../utils/playbackAlpha'
 
 interface PlayerTotemProps {
   playerId: string
@@ -13,6 +15,8 @@ interface PlayerTotemProps {
   team: 'home' | 'away'
   targetX: number
   targetY: number
+  nextX?: number
+  nextY?: number
   onSelect?: () => void
   selected?: boolean
   isEgoTarget?: boolean
@@ -20,7 +24,7 @@ interface PlayerTotemProps {
   isDraggable?: boolean
 }
 
-export function PlayerTotem({ name, jersey, team, targetX, targetY, onSelect, selected, isEgoTarget, onDragStart, isDraggable }: PlayerTotemProps) {
+export function PlayerTotem({ name, jersey, team, targetX, targetY, nextX, nextY, onSelect, selected, isEgoTarget, onDragStart, isDraggable }: PlayerTotemProps) {
   const groupRef = useRef<THREE.Group>(null)
   const targetScene = toScene(targetX, targetY)
   const currentPos = useRef<[number, number, number]>([...targetScene])
@@ -29,10 +33,22 @@ export function PlayerTotem({ name, jersey, team, targetX, targetY, onSelect, se
 
   useFrame((_, delta) => {
     if (!groupRef.current) return
-    const factor = Math.min(1, delta * 8)
-    currentPos.current[0] = lerp(currentPos.current[0], targetScene[0], factor)
+
+    // Compute interpolated target: blend current frame → next frame by playback alpha
+    let goalX = targetScene[0]
+    let goalZ = targetScene[2]
+
+    if (nextX !== undefined && nextY !== undefined) {
+      const nextScene = toScene(nextX, nextY)
+      goalX = lerp(targetScene[0], nextScene[0], playbackAlpha)
+      goalZ = lerp(targetScene[2], nextScene[2], playbackAlpha)
+    }
+
+    // Smooth spring-like follow (softer than before)
+    const factor = 1 - Math.exp(-5 * delta)
+    currentPos.current[0] = lerp(currentPos.current[0], goalX, factor)
     currentPos.current[1] = lerp(currentPos.current[1], targetScene[1], factor)
-    currentPos.current[2] = lerp(currentPos.current[2], targetScene[2], factor)
+    currentPos.current[2] = lerp(currentPos.current[2], goalZ, factor)
     groupRef.current.position.set(
       currentPos.current[0],
       currentPos.current[1],
@@ -54,6 +70,7 @@ export function PlayerTotem({ name, jersey, team, targetX, targetY, onSelect, se
       onPointerDown={(e) => {
         if (isDraggable && selected) {
           e.stopPropagation()
+          useStore.getState().setDragging(true)
           onDragStart?.()
         }
       }}

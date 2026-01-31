@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { toScene, WHITE_HEX, CYAN_HEX } from '../utils/constants'
 import { lerp } from '../utils/interpolation'
+import { playbackAlpha } from '../utils/playbackAlpha'
 import type { BallPhase } from '../types'
 
 const TRAIL_LENGTH = 8
@@ -10,6 +11,8 @@ const TRAIL_LENGTH = 8
 interface BallProps {
   x: number
   y: number
+  nextX?: number
+  nextY?: number
   phase: BallPhase
   airborneProgress: number
   selected?: boolean
@@ -17,7 +20,7 @@ interface BallProps {
   isDraggable?: boolean
 }
 
-export function Ball({ x, y, phase, airborneProgress, selected, onSelect, isDraggable }: BallProps) {
+export function Ball({ x, y, nextX, nextY, phase, airborneProgress, selected, onSelect, isDraggable }: BallProps) {
   const meshRef = useRef<THREE.Mesh>(null)
   const lightRef = useRef<THREE.PointLight>(null)
   const trailRef = useRef<THREE.Vector3[]>([])
@@ -34,10 +37,21 @@ export function Ball({ x, y, phase, airborneProgress, selected, onSelect, isDrag
 
   useFrame((_, delta) => {
     if (!meshRef.current) return
-    const f = Math.min(1, delta * 10)
-    currentPos.current[0] = lerp(currentPos.current[0], target[0], f)
-    currentPos.current[1] = lerp(currentPos.current[1], target[1], f)
-    currentPos.current[2] = lerp(currentPos.current[2], target[2], f)
+
+    // Sub-frame interpolation toward next frame
+    let goalX = target[0]
+    let goalY = target[1]
+    let goalZ = target[2]
+    if (nextX !== undefined && nextY !== undefined) {
+      const nextScene = toScene(nextX, nextY)
+      goalX = lerp(target[0], nextScene[0], playbackAlpha)
+      goalZ = lerp(target[2], nextScene[2], playbackAlpha)
+    }
+
+    const f = 1 - Math.exp(-6 * delta)
+    currentPos.current[0] = lerp(currentPos.current[0], goalX, f)
+    currentPos.current[1] = lerp(currentPos.current[1], goalY, f)
+    currentPos.current[2] = lerp(currentPos.current[2], goalZ, f)
     meshRef.current.position.set(
       currentPos.current[0],
       currentPos.current[1],

@@ -262,7 +262,7 @@ export async function computePlayStats(
   const attributions: PlayerAttribution[] = []
   for (const pivotFrameId of pivotalFrames) {
     const fi = play.frames.findIndex((f) => f.id === pivotFrameId)
-    if (fi <= 0) continue
+    if (fi < 0) continue
 
     const baseInput = buildSimInput(play, fi, 0)
     const basePosterior = posteriors[fi]
@@ -270,6 +270,8 @@ export async function computePlayStats(
     // For each player, simulate counterfactual (player frozen at t-1 position)
     for (const [pid, info] of Object.entries(play.players)) {
       if (pid === 'ball') continue
+      // At frame 0 there's no previous frame for counterfactual — skip
+      if (fi === 0) continue
       const prevPos = play.frames[fi - 1].positions[pid]
       if (!prevPos) continue
 
@@ -314,8 +316,25 @@ function estimateLineOfScrimmage(play: CanonicalPlay): number {
   const ballPos = firstFrame.positions['ball']
   if (ballPos) return ballPos[0]
 
-  // Average offense x positions
-  const offenseTeam = play.meta?.offense ?? 'home'
+  // Average offense x positions — use metadata if available, else guess offense
+  // as the team with lower average X (closer to their own endzone, attacking toward x=120)
+  let offenseTeam = play.meta?.offense
+  if (!offenseTeam) {
+    const teamXs: Record<string, number[]> = {}
+    for (const [id, info] of Object.entries(play.players)) {
+      if (id === 'ball') continue
+      const pos = firstFrame.positions[id]
+      if (!pos) continue
+      if (!teamXs[info.team]) teamXs[info.team] = []
+      teamXs[info.team].push(pos[0])
+    }
+    const teamAvgs = Object.entries(teamXs).map(([t, xs]) => ({
+      team: t,
+      avg: xs.reduce((a, b) => a + b, 0) / xs.length,
+    }))
+    teamAvgs.sort((a, b) => a.avg - b.avg)
+    offenseTeam = teamAvgs[0]?.team ?? 'home'
+  }
   const offenseXs: number[] = []
   for (const [id, info] of Object.entries(play.players)) {
     if (info.team === offenseTeam && firstFrame.positions[id]) {

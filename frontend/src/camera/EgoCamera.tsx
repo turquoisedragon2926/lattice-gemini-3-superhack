@@ -28,7 +28,7 @@ export function EgoCamera() {
     const eyeHeight = 1.8
 
     // Lerp position (framerate-independent)
-    const posFactor = Math.min(1, delta * 6)
+    const posFactor = 1 - Math.exp(-6 * delta)
     cam.position.x = lerp(cam.position.x, sx, posFactor)
     cam.position.y = lerp(cam.position.y, eyeHeight, posFactor)
     cam.position.z = lerp(cam.position.z, sz, posFactor)
@@ -38,7 +38,7 @@ export function EgoCamera() {
     const lookX = sx + Math.cos(rad) * 10
     const lookZ = sz - Math.sin(rad) * 10
 
-    const lookFactor = Math.min(1, delta * 5)
+    const lookFactor = 1 - Math.exp(-6 * delta)
     lookRef.current.x = lerp(lookRef.current.x, lookX, lookFactor)
     lookRef.current.y = eyeHeight
     lookRef.current.z = lerp(lookRef.current.z, lookZ, lookFactor)

@@ -31,7 +31,7 @@ function BeliefRibbon() {
   const currentMarker = useMemo(() => {
     if (!playStats || !points) return null
     // Map currentFrame to the correct posteriors index (posteriors may not align with frame indices)
-    const idx = Math.min(currentFrame, points.length - 1)
+    const idx = Math.min(Math.floor(currentFrame / Math.max(1, (useStore.getState().currentPlay?.frames.length ?? 1) - 1) * (points.length - 1)), points.length - 1)
     if (idx < 0) return null
     return points[idx]
   }, [playStats, points, currentFrame])
@@ -75,16 +75,18 @@ function PivotalMarkers() {
 
   const markers = useMemo(() => {
     if (!playStats || !currentPlay) return []
+    if (!playStats.pivotalFrames || playStats.pivotalFrames.length === 0) return []
     return playStats.pivotalFrames.map((fid) => {
       const fi = currentPlay.frames.findIndex((f) => f.id === fid)
       if (fi < 0) return null
-      // Place marker at ball position or field center for that frame
       const frame = currentPlay.frames[fi]
       const ballPos = frame.positions['ball']
-      const x = ballPos ? ballPos[0] : 60
-      const y = ballPos ? ballPos[1] : 26.65
+      if (!ballPos) return null
+      const x = ballPos[0]
+      const y = ballPos[1]
       const delta = playStats.deltas.find((d) => d.frameId === fid)
-      return { fi, x, y, kl: delta?.klDivergence ?? 0, deltaTd: delta?.deltaPTd ?? 0 }
+      if (!delta || delta.klDivergence < 0.005) return null
+      return { fi, x, y, kl: delta.klDivergence, deltaTd: delta.deltaPTd ?? 0 }
     }).filter(Boolean) as Array<{ fi: number; x: number; y: number; kl: number; deltaTd: number }>
   }, [playStats, currentPlay])
 
@@ -92,7 +94,7 @@ function PivotalMarkers() {
     <group>
       {markers.map((m, i) => {
         const scene = toScene(m.x, m.y)
-        const height = 3 + m.kl * 40 // taller = more pivotal
+        const height = Math.min(3 + m.kl * 40, 10) // taller = more pivotal, capped at 10
         const color = m.deltaTd >= 0 ? '#00e5ff' : '#ff6b35'
         return (
           <group key={i} position={[scene[0], 0, scene[2]]}>
@@ -206,6 +208,7 @@ function OutcomeDisplay() {
 
   const data = useMemo(() => {
     if (!playStats || !currentPlay) return null
+    if (currentFrame >= playStats.posteriors.length) return null
     const posterior = playStats.posteriors[currentFrame]
     if (!posterior) return null
     const frame = currentPlay.frames[currentFrame]

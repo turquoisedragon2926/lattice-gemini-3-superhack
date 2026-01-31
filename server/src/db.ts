@@ -81,7 +81,7 @@ export function getPlayData(gameId: number, playId: number) {
     if (!players[playerId]) {
       players[playerId] = {
         name: row.display_name || (row.team === 'ball' ? 'Football' : 'Unknown'),
-        team: row.team || 'unknown',
+        team: row.team === 'home' || row.team === 'away' || row.team === 'ball' ? row.team : 'home',
         ...(row.jersey_number != null && { jersey: row.jersey_number }),
       }
       if (row.nfl_id != null && positionMap[row.nfl_id]) {

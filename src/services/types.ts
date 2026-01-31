@@ -22,7 +22,7 @@ export interface PlayMeta {
 
 export interface PlayerInfo {
   name: string
-  team: string
+  team: 'home' | 'away' | 'ball'
   jersey?: number
   position?: string
 }
@@ -49,7 +49,7 @@ export interface PlayerSnapshot {
   pos: [number, number]
   vel: [number, number]
   ori: number
-  team: string
+  team: 'home' | 'away' | 'ball'
   role?: string
 }
 

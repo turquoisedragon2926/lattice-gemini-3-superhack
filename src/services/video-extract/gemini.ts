@@ -86,7 +86,7 @@ export class GeminiVideoExtractor implements VideoExtractor {
     userParts.push({ text: PROMPT })
 
     const response = await this.getClient().models.generateContent({
-      model: 'gemini-2.5-flash-preview-05-20',
+      model: 'gemini-3-flash-preview',
       contents: [
         // Few-shot example: demo video + prompt → expected output
         {

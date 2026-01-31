@@ -8,13 +8,15 @@ import { StatsOverlay } from './scene/StatsOverlay'
 import { CameraRig } from './camera/CameraRig'
 import { Effects } from './postprocessing/Effects'
 import { PredictedPaths } from './scene/PredictedPaths'
+import { PosteriorPaths } from './scene/PosteriorPaths'
 import { StatsHUD } from './hud/StatsHUD'
 import { Controls } from './hud/Controls'
 import { FunModeOverlay } from './funmode/FunModeOverlay'
 import { FunModeCamera } from './funmode/FunModeCamera'
 import { samplePlay } from './data/samplePlay'
-import { fetchGames, fetchPlays, fetchPlay, fetchPlayStats, extractVideo } from './api'
+import { fetchGames, fetchPlays, fetchPlay, fetchPlayStats } from './api'
 import { FRAME_INTERVAL } from './utils/constants'
+import { setPlaybackAlpha } from './utils/playbackAlpha'
 
 function PlaybackEngine() {
   const accum = useRef(0)
@@ -23,6 +25,7 @@ function PlaybackEngine() {
     const { playing, playbackSpeed, tick } = useStore.getState()
     if (!playing) {
       accum.current = 0
+      setPlaybackAlpha(0)
       return
     }
     accum.current += delta * playbackSpeed
@@ -30,6 +33,7 @@ function PlaybackEngine() {
       accum.current -= FRAME_INTERVAL
       tick()
     }
+    setPlaybackAlpha(accum.current / FRAME_INTERVAL)
   })
 
   return null
@@ -77,14 +81,7 @@ function StatsLoader() {
 export function App() {
   useEffect(() => {
     async function loadInitialPlay() {
-      // Try loading mock Gemini extract first
-      try {
-        const play = await extractVideo({ type: 'video' }, 'mock')
-        useStore.getState().loadPlay(play)
-        return
-      } catch {
-        // Extract endpoint not available, try dataset
-      }
+      // Try loading Kaggle dataset first
       try {
         const games = await fetchGames()
         if (games.length > 0) {
@@ -93,11 +90,19 @@ export function App() {
           if (plays.length > 0) {
             const play = await fetchPlay(gameId, plays[0].play_id)
             useStore.getState().loadPlay(play)
+            useStore.getState().setAvailablePlays(
+              plays.map((p) => ({
+                gameId,
+                playId: p.play_id,
+                label: p.description || `Q${p.quarter} ${p.down}&${p.yards_to_go}`,
+              })),
+              0,
+            )
             return
           }
         }
       } catch {
-        // API not available, use sample
+        // Dataset not available, try mock
       }
       useStore.getState().loadPlay(samplePlay)
     }
@@ -119,6 +124,7 @@ export function App() {
         <PlayerLayer />
         <StatsOverlay />
         <PredictedPaths />
+        <PosteriorPaths />
         <PlaybackEngine />
         <Effects />
       </Canvas>

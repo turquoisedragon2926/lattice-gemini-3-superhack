@@ -1,11 +1,13 @@
 import { create } from 'zustand'
 import type { PlayData, CameraMode, Stats, PlayStats } from './types'
-import { predict, fetchPlayStats } from './api'
+import { predict, fetchPlayStats, fetchPlay } from './api'
 
 interface LatticeStore {
   // Data
   currentPlay: PlayData | null
   availablePlays: Array<{ gameId: number; playId: number; label: string }>
+  playIndex: number
+  loadingPlay: boolean
 
   // Playback
   currentFrame: number
@@ -26,6 +28,7 @@ interface LatticeStore {
   selectedPlayer: string | null
 
   // Fork simulation
+  dragging: boolean
   dragOverrides: Record<string, [number, number]>
   predictedPlay: PlayData | null
   simulating: boolean
@@ -49,27 +52,35 @@ interface LatticeStore {
   toggleStatsOverlay: () => void
   setPlayStats: (s: PlayStats | null) => void
   setSelectedPlayer: (id: string | null) => void
+  setDragging: (d: boolean) => void
   setDragOverride: (playerId: string, pos: [number, number]) => void
+  setPlaybackSpeed: (speed: number) => void
   clearFork: () => void
   setSimEngine: (e: 'mock' | 'gemini') => void
   runSimulation: () => Promise<void>
   runBeliefEngine: () => Promise<void>
   clearBeliefEngine: () => void
+  setAvailablePlays: (plays: Array<{ gameId: number; playId: number; label: string }>, index: number) => void
+  loadNextPlay: () => Promise<void>
+  loadPrevPlay: () => Promise<void>
 }
 
 export const useStore = create<LatticeStore>((set, get) => ({
   currentPlay: null,
   availablePlays: [],
+  playIndex: 0,
+  loadingPlay: false,
   currentFrame: 0,
   playing: false,
   looping: true,
-  playbackSpeed: 1.0,
+  playbackSpeed: 0.25,
   cameraMode: '3d',
   predictions: null,
   stats: { expectedYards: 0, separation: 0, endzoneProb: 0 },
   statsOverlay: false,
   playStats: null,
   selectedPlayer: null,
+  dragging: false,
   dragOverrides: {},
   predictedPlay: null,
   simulating: false,
@@ -81,7 +92,7 @@ export const useStore = create<LatticeStore>((set, get) => ({
   loadPlay: (play) => set({
     currentPlay: play,
     currentFrame: 0,
-    playing: false,
+    playing: true,
     predictions: null,
     playStats: null,
     selectedPlayer: null,
@@ -123,6 +134,7 @@ export const useStore = create<LatticeStore>((set, get) => ({
   pause: () => set({ playing: false }),
   togglePlay: () => set((s) => ({ playing: !s.playing })),
   toggleLoop: () => set((s) => ({ looping: !s.looping })),
+  setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
   setCameraMode: (mode) => {
     if (mode === 'ego' && !get().selectedPlayer) return
     set({ cameraMode: mode })
@@ -136,6 +148,8 @@ export const useStore = create<LatticeStore>((set, get) => ({
     if (!newId && s.cameraMode === 'ego') updates.cameraMode = '3d'
     return updates as any
   }),
+
+  setDragging: (d) => set({ dragging: d }),
 
   setDragOverride: (playerId, pos) => {
     const { currentPlay, currentFrame } = get()
@@ -187,6 +201,58 @@ export const useStore = create<LatticeStore>((set, get) => ({
       set({ predictedPlay: result, simulating: false })
     } catch {
       set({ simulating: false })
+    }
+  },
+
+  runBeliefEngine: async () => {
+    const { currentPlay, currentFrame, simEngine } = get()
+    if (!currentPlay) return
+    set({ beliefEngineRunning: true, forkFrame: currentFrame, beliefEngineResult: null })
+    try {
+      const stats = await fetchPlayStats(currentPlay, simEngine, currentFrame)
+      set({ beliefEngineResult: stats, beliefEngineRunning: false, playStats: stats })
+    } catch {
+      set({ beliefEngineRunning: false })
+    }
+  },
+
+  clearBeliefEngine: () => {
+    const forkFrame = get().forkFrame
+    set({
+      beliefEngineResult: null,
+      playStats: null,
+      forkFrame: null,
+      currentFrame: forkFrame ?? get().currentFrame,
+    })
+  },
+
+  setAvailablePlays: (plays, index) => set({ availablePlays: plays, playIndex: index }),
+
+  loadNextPlay: async () => {
+    const { availablePlays, playIndex } = get()
+    if (playIndex >= availablePlays.length - 1) return
+    const next = availablePlays[playIndex + 1]
+    set({ loadingPlay: true })
+    try {
+      const play = await fetchPlay(next.gameId, next.playId)
+      set({ loadingPlay: false, playIndex: playIndex + 1 })
+      get().loadPlay(play)
+    } catch {
+      set({ loadingPlay: false })
+    }
+  },
+
+  loadPrevPlay: async () => {
+    const { availablePlays, playIndex } = get()
+    if (playIndex <= 0) return
+    const prev = availablePlays[playIndex - 1]
+    set({ loadingPlay: true })
+    try {
+      const play = await fetchPlay(prev.gameId, prev.playId)
+      set({ loadingPlay: false, playIndex: playIndex - 1 })
+      get().loadPlay(play)
+    } catch {
+      set({ loadingPlay: false })
     }
   },
 }))
