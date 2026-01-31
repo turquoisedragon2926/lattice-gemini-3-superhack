@@ -1,0 +1,181 @@
+import { useRef, useState, useCallback } from 'react'
+import { useFunModeStore } from './funModeStore'
+import { RevealCompositor } from './RevealCompositor'
+import { useStore } from '../store'
+import { extractVideo } from '../api'
+import './funmode.css'
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
+async function estimateCameraPose(base64: string) {
+  const res = await fetch(`${API}/api/camera-pose`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ base64 }),
+  })
+  if (!res.ok) throw new Error(`Camera pose estimation failed: ${res.status}`)
+  return res.json()
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      // Strip the data URL prefix to get raw base64
+      const base64 = result.split(',')[1]
+      resolve(base64)
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+export function FunModeOverlay() {
+  const funPhase = useFunModeStore((s) => s.funPhase)
+  const funImageDataUrl = useFunModeStore((s) => s.funImageDataUrl)
+  const error = useFunModeStore((s) => s.error)
+  const setFunImage = useFunModeStore((s) => s.setFunImage)
+  const setFunCameraPose = useFunModeStore((s) => s.setFunCameraPose)
+  const setFunPhase = useFunModeStore((s) => s.setFunPhase)
+  const setError = useFunModeStore((s) => s.setError)
+  const exitFunMode = useFunModeStore((s) => s.exitFunMode)
+
+  const loadPlay = useStore((s) => s.loadPlay)
+  const simulating = useStore((s) => s.simulating)
+  const runSimulation = useStore((s) => s.runSimulation)
+  const setSimEngine = useStore((s) => s.setSimEngine)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [dragOver, setDragOver] = useState(false)
+
+  const handleFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file')
+      return
+    }
+
+    setFunPhase('extracting')
+    setError(null)
+
+    try {
+      const [base64, dataUrl] = await Promise.all([
+        readFileAsBase64(file),
+        readFileAsDataUrl(file),
+      ])
+      setFunImage(dataUrl)
+
+      // Fire both API calls in parallel
+      const [playData, cameraPose] = await Promise.all([
+        extractVideo({ type: 'image', base64 }, 'gemini'),
+        estimateCameraPose(base64),
+      ])
+
+      loadPlay(playData)
+      setFunCameraPose(cameraPose)
+      setFunPhase('revealing')
+    } catch (err: any) {
+      setError(err.message || 'Extraction failed')
+      setFunPhase('uploading')
+    }
+  }, [setFunPhase, setError, setFunImage, loadPlay, setFunCameraPose])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFile(file)
+  }, [handleFile])
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) handleFile(file)
+  }, [handleFile])
+
+  if (funPhase === 'idle') return null
+
+  // ── Upload Phase ──
+  if (funPhase === 'uploading') {
+    return (
+      <div className="funmode-upload">
+        <div
+          className={`funmode-dropzone ${dragOver ? 'drag-over' : ''}`}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <span className="funmode-dropzone-label">Drop Field Image</span>
+          <span className="funmode-dropzone-hint">or click to browse</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleInputChange}
+          />
+        </div>
+        {error && <div className="funmode-error">{error}</div>}
+        <button className="funmode-cancel-btn" onClick={exitFunMode}>
+          Cancel
+        </button>
+      </div>
+    )
+  }
+
+  // ── Extracting Phase ──
+  if (funPhase === 'extracting') {
+    return (
+      <div className="funmode-extracting">
+        {funImageDataUrl && (
+          <img
+            src={funImageDataUrl}
+            alt="Analyzing"
+            className="funmode-extracting-image"
+            draggable={false}
+          />
+        )}
+        <div className="funmode-scanline" />
+        <div className="funmode-extracting-label">Analyzing Formation...</div>
+        {error && <div className="funmode-error">{error}</div>}
+      </div>
+    )
+  }
+
+  // ── Revealing Phase ──
+  if (funPhase === 'revealing') {
+    return <RevealCompositor />
+  }
+
+  // ── Interactive Phase ──
+  if (funPhase === 'interactive') {
+    return (
+      <div className="funmode-interactive">
+        <button
+          className="funmode-btn"
+          onClick={() => {
+            setSimEngine('gemini')
+            runSimulation()
+          }}
+          disabled={simulating}
+        >
+          {simulating ? 'Simulating...' : 'Simulate'}
+        </button>
+        <button className="funmode-btn funmode-btn-exit" onClick={exitFunMode}>
+          Exit
+        </button>
+      </div>
+    )
+  }
+
+  return null
+}
