@@ -36,6 +36,7 @@ def create_tables(conn: sqlite3.Connection):
             nfl_id INTEGER PRIMARY KEY,
             display_name TEXT NOT NULL,
             position TEXT,
+            jersey_number INTEGER,
             height TEXT,
             weight INTEGER
         );
@@ -180,7 +181,7 @@ def ingest_tracking(conn: sqlite3.Connection, games_df: pd.DataFrame):
                 "x": x.round(2),
                 "y": y.round(2),
                 "speed": s.round(2),
-                "accel": chunk["a"].round(2),
+                "accel": chunk["a"].fillna(0.0).round(2),
                 "vx": vx.round(2),
                 "vy": vy.round(2),
                 "orientation": o.round(2),

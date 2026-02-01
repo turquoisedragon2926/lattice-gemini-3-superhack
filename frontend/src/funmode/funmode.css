@@ -54,6 +54,61 @@
   letter-spacing: 0.1em;
 }
 
+/* ── URL Input ── */
+
+.funmode-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  width: 400px;
+}
+
+.funmode-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(0, 229, 255, 0.15);
+}
+
+.funmode-divider-text {
+  color: rgba(224, 224, 224, 0.3);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.funmode-url-row {
+  display: flex;
+  gap: 8px;
+  width: 400px;
+}
+
+.funmode-url-input {
+  flex: 1;
+  background: rgba(0, 229, 255, 0.05);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 2px;
+  color: rgba(224, 224, 224, 0.8);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.funmode-url-input::placeholder {
+  color: rgba(224, 224, 224, 0.2);
+}
+
+.funmode-url-input:focus {
+  border-color: rgba(0, 229, 255, 0.5);
+}
+
+.funmode-url-btn {
+  padding: 8px 16px;
+}
+
 .funmode-cancel-btn {
   margin-top: 24px;
   background: transparent;

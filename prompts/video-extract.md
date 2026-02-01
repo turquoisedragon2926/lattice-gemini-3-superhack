@@ -66,6 +66,7 @@ Return **only** valid JSON, no commentary. Use this exact schema:
 - If you can read game situation from a scorebug (down, distance, quarter), fill in `meta`.
 - `velocities` should be empty `{}` for still images. For video with multiple frames, estimate velocity as `[vx, vy]` in yards/sec.
 - For video input: sample frames at 10 Hz (every 0.1s), return multiple frame objects with sequential `id` values.
+- **IMPORTANT: Include position estimates for ALL 22 players and the ball in EVERY frame.** Do not omit players from later frames. If a player is partially occluded or hard to track, estimate their position based on their likely movement from the previous frame. Every frame must have the same set of player IDs.
 - **If the video contains multiple plays**, extract only the first play. Ignore any subsequent plays, huddles, or replays after the initial play ends.
 
 ### Estimation tips

@@ -7,9 +7,11 @@ export interface CameraPose {
 }
 
 export type FunPhase = 'idle' | 'uploading' | 'extracting' | 'revealing' | 'interactive'
+export type FunSource = 'image' | 'url'
 
 interface FunModeStore {
   funPhase: FunPhase
+  funSource: FunSource
   funImageDataUrl: string | null
   funCameraPose: CameraPose | null
   revealProgress: number
@@ -21,11 +23,13 @@ interface FunModeStore {
   setFunCameraPose: (pose: CameraPose) => void
   setFunPhase: (phase: FunPhase) => void
   setRevealProgress: (t: number) => void
+  setFunSource: (source: FunSource) => void
   setError: (msg: string | null) => void
 }
 
 export const useFunModeStore = create<FunModeStore>((set) => ({
   funPhase: 'idle',
+  funSource: 'image',
   funImageDataUrl: null,
   funCameraPose: null,
   revealProgress: 0,
@@ -33,6 +37,7 @@ export const useFunModeStore = create<FunModeStore>((set) => ({
 
   enterFunMode: () => set({
     funPhase: 'uploading',
+    funSource: 'image',
     funImageDataUrl: null,
     funCameraPose: null,
     revealProgress: 0,
@@ -41,6 +46,7 @@ export const useFunModeStore = create<FunModeStore>((set) => ({
 
   exitFunMode: () => set({
     funPhase: 'idle',
+    funSource: 'image',
     funImageDataUrl: null,
     funCameraPose: null,
     revealProgress: 0,
@@ -51,5 +57,6 @@ export const useFunModeStore = create<FunModeStore>((set) => ({
   setFunCameraPose: (pose) => set({ funCameraPose: pose }),
   setFunPhase: (phase) => set({ funPhase: phase }),
   setRevealProgress: (t) => set({ revealProgress: t }),
+  setFunSource: (source) => set({ funSource: source }),
   setError: (msg) => set({ error: msg }),
 }))

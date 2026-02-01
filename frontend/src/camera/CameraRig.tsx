@@ -3,6 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import { useStore } from '../store'
+import { useFunModeStore } from '../funmode/funModeStore'
 import {
   PERSPECTIVE_POSITION,
   AUTO_ROTATE_SPEED,
@@ -21,6 +22,9 @@ const TOP_FOV = 30
 
 export function CameraRig() {
   const cameraMode = useStore((s) => s.cameraMode)
+  const funPhase = useFunModeStore((s) => s.funPhase)
+  const funCameraPose = useFunModeStore((s) => s.funCameraPose)
+  const funModeActive = funCameraPose && (funPhase === 'revealing' || funPhase === 'interactive')
   const controlsRef = useRef<any>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera>(null)
   const idleTimerRef = useRef<number | null>(null)
@@ -73,9 +77,26 @@ export function CameraRig() {
     }
   }, [gl, resetIdleTimer])
 
+  // Disable OrbitControls when fun mode camera takes over
+  useEffect(() => {
+    if (funModeActive && controlsRef.current) {
+      controlsRef.current.enabled = false
+      controlsRef.current.autoRotate = false
+    }
+  }, [funModeActive])
+
   useFrame((_, delta) => {
     const cam = cameraRef.current
     if (!cam) return
+
+    // Don't drive camera when fun mode is active
+    if (funModeActive) {
+      if (controlsRef.current) {
+        controlsRef.current.enabled = false
+        controlsRef.current.autoRotate = false
+      }
+      return
+    }
 
     const factor = 1 - Math.exp(-TRANSITION_SPEED * delta)
 
@@ -179,14 +200,15 @@ export function CameraRig() {
       <OrbitControls
         ref={controlsRef}
         target={[0, 0, 0]}
-        autoRotate
+        autoRotate={!funModeActive}
         autoRotateSpeed={AUTO_ROTATE_SPEED}
         enableDamping
         dampingFactor={0.05}
         minDistance={5}
         maxDistance={150}
         maxPolarAngle={Math.PI / 2.1}
-        enableRotate={cameraMode !== 'top'}
+        enableRotate={cameraMode !== 'top' && !funModeActive}
+        enabled={!funModeActive}
       />
     </>
   )

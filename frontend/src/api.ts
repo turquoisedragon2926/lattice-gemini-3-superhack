@@ -53,7 +53,7 @@ export async function predict(input: unknown): Promise<PlayData> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })
-  if (!res.ok) throw new Error(`Prediction failed: ${res.status}`)
+  if (!res.ok) throw new Error(`Prediction failed: ${res.status} ${res.statusText}`)
   return res.json()
 }
 

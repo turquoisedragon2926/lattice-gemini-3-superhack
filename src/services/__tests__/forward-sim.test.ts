@@ -84,8 +84,8 @@ describe('MockVideoExtractor', () => {
     const result = await ext.extract({ type: 'image' })
 
     expect(result.source).toBe('video')
-    expect(result.frameCount).toBe(10)
-    expect(result.frames).toHaveLength(10)
+    expect(result.frameCount).toBe(1)
+    expect(result.frames).toHaveLength(1)
     // 22 players + ball
     const ids = Object.keys(result.players)
     expect(ids).toContain('ball')

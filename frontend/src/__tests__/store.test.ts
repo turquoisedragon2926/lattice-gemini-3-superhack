@@ -35,7 +35,7 @@ describe('LatticeStore', () => {
     const s = useStore.getState()
     expect(s.currentPlay).toBe(mockPlay)
     expect(s.currentFrame).toBe(0)
-    expect(s.playing).toBe(false)
+    expect(s.playing).toBe(true)
     expect(s.predictions).toBeNull()
   })
 

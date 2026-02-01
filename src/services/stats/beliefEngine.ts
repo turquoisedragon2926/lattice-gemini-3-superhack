@@ -31,21 +31,29 @@ function buildSimInput(
   noiseScale: number = 0,
 ): SimulationInput {
   const frame = play.frames[frameIdx]
+  const prevFrame = frameIdx > 0 ? play.frames[frameIdx - 1] : null
+  const DT = 0.1 // 10 Hz tracking data
   const state: Record<string, PlayerSnapshot> = {}
 
   for (const [id, info] of Object.entries(play.players)) {
     const pos = frame.positions[id]
-    const vel = frame.velocities[id]
     if (!pos) continue
+    // Compute velocity from position delta so predictions continue
+    // in the direction the player is visually moving
+    let vel: [number, number] = [0, 0]
+    if (prevFrame) {
+      const prevPos = prevFrame.positions[id]
+      if (prevPos) {
+        vel = [(pos[0] - prevPos[0]) / DT, (pos[1] - prevPos[1]) / DT]
+      }
+    }
     state[id] = {
       pos: noiseScale > 0
         ? [jitter(pos[0], noiseScale), jitter(pos[1], noiseScale)]
         : [...pos],
-      vel: vel
-        ? (noiseScale > 0
-          ? [jitter(vel[0], noiseScale * 0.5), jitter(vel[1], noiseScale * 0.5)]
-          : [...vel])
-        : [0, 0],
+      vel: noiseScale > 0
+        ? [jitter(vel[0], noiseScale * 0.5), jitter(vel[1], noiseScale * 0.5)]
+        : [...vel],
       ori: frame.orientations[id] ?? 0,
       team: info.team,
       role: info.position,
@@ -82,7 +90,7 @@ function classifyOutcome(
 
   const yards = finalX - lineOfScrimmage
 
-  if (finalX >= 110) return { yards, bucket: 'touchdown' }
+  if (finalX >= 120) return { yards, bucket: 'touchdown' }
   if (yards < 0) return { yards, bucket: 'loss' }
   if (yards < 5) return { yards, bucket: 'short' }
   if (yards < 10) return { yards, bucket: 'medium' }

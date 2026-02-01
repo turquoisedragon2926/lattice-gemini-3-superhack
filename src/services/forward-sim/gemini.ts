@@ -35,7 +35,7 @@ export class GeminiForwardSimulator implements ForwardSimulator {
     })
 
     const text = response.text ?? ''
-    const jsonMatch = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\[[\s\S]*\])/)
+    const jsonMatch = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\[[\s\S]*?\])/)
     if (!jsonMatch) throw new Error('Gemini response did not contain valid JSON')
 
     const parsed = JSON.parse(jsonMatch[1])

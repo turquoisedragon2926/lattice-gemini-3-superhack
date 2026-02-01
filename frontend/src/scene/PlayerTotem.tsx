@@ -7,6 +7,9 @@ import { useStore } from '../store'
 import { lerp } from '../utils/interpolation'
 import { playbackAlpha } from '../utils/playbackAlpha'
 
+const SPRING_NORMAL = 5
+const SPRING_PREDICTED = 30
+
 interface PlayerTotemProps {
   playerId: string
   name: string
@@ -44,8 +47,10 @@ export function PlayerTotem({ name, jersey, team, targetX, targetY, nextX, nextY
       goalZ = lerp(targetScene[2], nextScene[2], playbackAlpha)
     }
 
-    // Smooth spring-like follow (softer than before)
-    const factor = 1 - Math.exp(-5 * delta)
+    // Stiffer spring when viewing predicted trajectories so players track targets
+    const isPredicted = !!useStore.getState().predictedPlay
+    const stiffness = isPredicted ? SPRING_PREDICTED : SPRING_NORMAL
+    const factor = 1 - Math.exp(-stiffness * delta)
     currentPos.current[0] = lerp(currentPos.current[0], goalX, factor)
     currentPos.current[1] = lerp(currentPos.current[1], targetScene[1], factor)
     currentPos.current[2] = lerp(currentPos.current[2], goalZ, factor)
@@ -66,12 +71,16 @@ export function PlayerTotem({ name, jersey, team, targetX, targetY, nextX, nextY
       ref={groupRef}
       position={targetScene}
       visible={!isEgoTarget}
-      onClick={(e) => { e.stopPropagation(); onSelect?.() }}
-      onPointerDown={(e) => {
-        if (isDraggable && selected) {
-          e.stopPropagation()
+      onClick={(e) => {
+        e.stopPropagation()
+        if (useStore.getState().dragging) {
+          useStore.getState().setDragging(false)
+          useStore.getState().setSelectedPlayer(null)
+          return
+        }
+        onSelect?.()
+        if (isDraggable && useStore.getState().cameraMode !== 'ego') {
           useStore.getState().setDragging(true)
-          onDragStart?.()
         }
       }}
     >

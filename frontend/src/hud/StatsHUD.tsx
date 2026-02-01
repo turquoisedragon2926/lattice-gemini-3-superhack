@@ -1,5 +1,8 @@
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
 import styles from './StatsHUD.module.css'
+
+const EVENT_DISPLAY_DURATION = 2500 // ms
 
 export function StatsHUD() {
   const currentPlay = useStore((s) => s.currentPlay)
@@ -10,7 +13,21 @@ export function StatsHUD() {
 
   const meta = currentPlay?.meta
   const eventKey = String(currentPlay?.frames[currentFrame]?.id)
-  const event = currentPlay?.events?.[eventKey]
+  const rawEvent = currentPlay?.events?.[eventKey]
+
+  const [displayEvent, setDisplayEvent] = useState<string | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (rawEvent) {
+      setDisplayEvent(rawEvent)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => setDisplayEvent(null), EVENT_DISPLAY_DURATION)
+    }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [rawEvent])
+
+  const event = displayEvent
 
   // Ball stats
   const frame = currentPlay?.frames[currentFrame]
@@ -54,15 +71,19 @@ export function StatsHUD() {
 
       <div className={styles.statsRow}>
         <span className={styles.crosshair}>+</span>
-        <div className={styles.stat}>
-          <span className={styles.statLabel}>EXP YARDS</span>
-          <span className={styles.statValue}>{expYards.toFixed(1)}</span>
-        </div>
-        <div className={styles.divider} />
-        <div className={styles.stat}>
-          <span className={styles.statLabel}>TD PROB</span>
-          <span className={styles.statValue}>{(endProb * 100).toFixed(0)}%</span>
-        </div>
+        {playStats && (
+          <>
+            <div className={styles.stat}>
+              <span className={styles.statLabel}>EXP YARDS</span>
+              <span className={styles.statValue}>{expYards.toFixed(1)}</span>
+            </div>
+            <div className={styles.divider} />
+            <div className={styles.stat}>
+              <span className={styles.statLabel}>TD PROB</span>
+              <span className={styles.statValue}>{(endProb * 100).toFixed(0)}%</span>
+            </div>
+          </>
+        )}
         {statsOverlay && posterior && (
           <>
             <div className={styles.divider} />

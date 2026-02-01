@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { toScene, WHITE_HEX, CYAN_HEX } from '../utils/constants'
+import { useStore } from '../store'
 import { lerp } from '../utils/interpolation'
 import { playbackAlpha } from '../utils/playbackAlpha'
 import type { BallPhase } from '../types'
@@ -48,7 +49,8 @@ export function Ball({ x, y, nextX, nextY, phase, airborneProgress, selected, on
       goalZ = lerp(target[2], nextScene[2], playbackAlpha)
     }
 
-    const f = 1 - Math.exp(-6 * delta)
+    const isPredicted = !!useStore.getState().predictedPlay
+    const f = 1 - Math.exp(-(isPredicted ? 30 : 6) * delta)
     currentPos.current[0] = lerp(currentPos.current[0], goalX, f)
     currentPos.current[1] = lerp(currentPos.current[1], goalY, f)
     currentPos.current[2] = lerp(currentPos.current[2], goalZ, f)
@@ -96,8 +98,18 @@ export function Ball({ x, y, nextX, nextY, phase, airborneProgress, selected, on
       <mesh
         ref={meshRef}
         position={target}
-        onClick={(e) => { if (onSelect) { e.stopPropagation(); onSelect() } }}
-        onPointerDown={(e) => { if (isDraggable && selected) e.stopPropagation() }}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (useStore.getState().dragging) {
+            useStore.getState().setDragging(false)
+            useStore.getState().setSelectedPlayer(null)
+            return
+          }
+          onSelect?.()
+          if (isDraggable) {
+            useStore.getState().setDragging(true)
+          }
+        }}
       >
         <icosahedronGeometry args={[0.3, 1]} />
         <meshBasicMaterial color={color} wireframe transparent opacity={isAirborne ? 1.0 : 0.8} />

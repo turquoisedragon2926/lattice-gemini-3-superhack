@@ -230,7 +230,7 @@ function OutcomeDisplay() {
   ]
 
   return (
-    <group position={[scene[0], 6, scene[2]]}>
+    <group position={[scene[0], 10, scene[2]]}>
       {/* Title */}
       <Billboard position={[0, 2.2, 0]}>
         <Text fontSize={0.22} color="#00e5ff" anchorX="center">
@@ -328,7 +328,6 @@ export function StatsOverlay() {
   return (
     <group>
       <BeliefRibbon />
-      <PivotalMarkers />
       <AttributionRings />
       <OutcomeDisplay />
       <SelectedPlayerCard />

@@ -9,11 +9,12 @@ export function Controls() {
   const looping = useStore((s) => s.looping)
   const currentFrame = useStore((s) => s.currentFrame)
   const currentPlay = useStore((s) => s.currentPlay)
+  const predictedPlay = useStore((s) => s.predictedPlay)
+  const predictionFrame = useStore((s) => s.predictionFrame)
   const cameraMode = useStore((s) => s.cameraMode)
   const statsOverlay = useStore((s) => s.statsOverlay)
   const selectedPlayer = useStore((s) => s.selectedPlayer)
   const dragOverrides = useStore((s) => s.dragOverrides)
-  const predictedPlay = useStore((s) => s.predictedPlay)
   const simulating = useStore((s) => s.simulating)
   const simEngine = useStore((s) => s.simEngine)
   const setSimEngine = useStore((s) => s.setSimEngine)
@@ -40,7 +41,11 @@ export function Controls() {
   // Hide normal controls during fun mode upload/extract/reveal phases
   if (funPhase !== 'idle' && funPhase !== 'interactive') return null
 
-  const totalFrames = currentPlay?.frames.length ?? 0
+  const inPrediction = !!predictedPlay
+  const totalFrames = inPrediction
+    ? (predictedPlay?.frames.length ?? 0)
+    : (currentPlay?.frames.length ?? 0)
+  const displayFrame = inPrediction ? predictionFrame : currentFrame
   const locked = beliefEngineRunning
 
   const playLabel = loadingPlay
@@ -106,8 +111,8 @@ export function Controls() {
           <button
             className={`${styles.btn} ${cameraMode === 'ego' ? styles.btnActive : ''}`}
             onClick={() => setCameraMode('ego')}
-            disabled={!selectedPlayer || locked}
-            title={!selectedPlayer ? 'Select a player first' : 'First-person view'}
+            disabled={locked}
+            title="First-person view — click a player"
           >
             EGO
           </button>
@@ -146,13 +151,13 @@ export function Controls() {
           className={styles.scrubber}
           min={0}
           max={Math.max(0, totalFrames - 1)}
-          value={currentFrame}
-          onChange={(e) => setFrame(Number(e.target.value))}
-          disabled={locked}
+          value={displayFrame}
+          onChange={(e) => !inPrediction && setFrame(Number(e.target.value))}
+          disabled={locked || inPrediction}
         />
 
         <span className={styles.frameCount}>
-          {currentFrame + 1} / {totalFrames}
+          {inPrediction ? `P ${displayFrame + 1}` : `${displayFrame + 1}`} / {totalFrames}
         </span>
 
         <input

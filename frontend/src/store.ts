@@ -31,9 +31,13 @@ interface LatticeStore {
   dragging: boolean
   dragOverrides: Record<string, [number, number]>
   predictedPlay: PlayData | null
+  predictionFrame: number
   simulating: boolean
   forkFrame: number | null
   simEngine: 'mock' | 'gemini'
+
+  // Boot
+  booting: boolean
 
   // Belief engine
   beliefEngineRunning: boolean
@@ -73,7 +77,7 @@ export const useStore = create<LatticeStore>((set, get) => ({
   currentFrame: 0,
   playing: false,
   looping: true,
-  playbackSpeed: 0.25,
+  playbackSpeed: 1,
   cameraMode: '3d',
   predictions: null,
   stats: { expectedYards: 0, separation: 0, endzoneProb: 0 },
@@ -83,9 +87,11 @@ export const useStore = create<LatticeStore>((set, get) => ({
   dragging: false,
   dragOverrides: {},
   predictedPlay: null,
+  predictionFrame: 0,
   simulating: false,
   forkFrame: null,
   simEngine: 'mock',
+  booting: true,
   beliefEngineRunning: false,
   beliefEngineResult: null,
 
@@ -105,8 +111,24 @@ export const useStore = create<LatticeStore>((set, get) => ({
   },
 
   tick: () => {
-    const { currentPlay, currentFrame, looping, playStats } = get()
+    const { currentPlay, predictedPlay, currentFrame, predictionFrame, looping, playStats } = get()
     if (!currentPlay) return
+
+    // When viewing predicted trajectories, advance predictionFrame instead
+    if (predictedPlay) {
+      const maxFrame = predictedPlay.frames.length - 1
+      if (predictionFrame >= maxFrame) {
+        if (looping) {
+          set({ predictionFrame: 0 })
+        } else {
+          set({ playing: false })
+        }
+      } else {
+        set({ predictionFrame: predictionFrame + 1 })
+      }
+      return
+    }
+
     const maxFrame = currentPlay.frames.length - 1
     if (currentFrame >= maxFrame) {
       if (looping) {
@@ -117,16 +139,19 @@ export const useStore = create<LatticeStore>((set, get) => ({
     } else {
       const nextFrame = currentFrame + 1
       // Update live stats from playStats if available
-      const updates: Partial<LatticeStore> = { currentFrame: nextFrame }
       if (playStats && playStats.posteriors[nextFrame]) {
         const p = playStats.posteriors[nextFrame]
-        updates.stats = {
-          expectedYards: p.expectedYards,
-          separation: 0,
-          endzoneProb: p.pTouchdown,
-        }
+        set({
+          currentFrame: nextFrame,
+          stats: {
+            expectedYards: p.expectedYards,
+            separation: 0,
+            endzoneProb: p.pTouchdown,
+          },
+        })
+      } else {
+        set({ currentFrame: nextFrame })
       }
-      set(updates as any)
     }
   },
 
@@ -136,7 +161,6 @@ export const useStore = create<LatticeStore>((set, get) => ({
   toggleLoop: () => set((s) => ({ looping: !s.looping })),
   setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
   setCameraMode: (mode) => {
-    if (mode === 'ego' && !get().selectedPlayer) return
     set({ cameraMode: mode })
   },
   setPredictions: (p) => set({ predictions: p }),
@@ -144,9 +168,8 @@ export const useStore = create<LatticeStore>((set, get) => ({
   setPlayStats: (s) => set({ playStats: s }),
   setSelectedPlayer: (id) => set((s) => {
     const newId = s.selectedPlayer === id ? null : id
-    const updates: Partial<LatticeStore> = { selectedPlayer: newId }
-    if (!newId && s.cameraMode === 'ego') updates.cameraMode = '3d'
-    return updates as any
+    if (!newId && s.cameraMode === 'ego') return { selectedPlayer: newId, cameraMode: '3d' as CameraMode }
+    return { selectedPlayer: newId }
   }),
 
   setDragging: (d) => set({ dragging: d }),
@@ -170,7 +193,7 @@ export const useStore = create<LatticeStore>((set, get) => ({
 
   clearFork: () => {
     const forkFrame = get().forkFrame
-    set({ dragOverrides: {}, predictedPlay: null, forkFrame: null, currentFrame: forkFrame ?? get().currentFrame })
+    set({ dragOverrides: {}, predictedPlay: null, predictionFrame: 0, forkFrame: null, playing: false, currentFrame: forkFrame ?? get().currentFrame })
   },
 
   setSimEngine: (e) => set({ simEngine: e }),
@@ -180,12 +203,22 @@ export const useStore = create<LatticeStore>((set, get) => ({
     if (!currentPlay) return
     set({ simulating: true, forkFrame: currentFrame })
     const frame = currentPlay.frames[currentFrame]
+    const prevFrame = currentFrame > 0 ? currentPlay.frames[currentFrame - 1] : null
+    const DT = 0.1 // 10 Hz tracking data
     const state: Record<string, { pos: [number, number]; vel: [number, number]; ori: number; team: string }> = {}
     for (const [id, player] of Object.entries(currentPlay.players)) {
       const pos = dragOverrides[id] || frame.positions[id]
-      const vel = frame.velocities[id] || [0, 0]
-      const ori = frame.orientations[id] ?? 0
       if (!pos) continue
+      // Compute velocity from position delta so predicted trajectories
+      // visually continue in the direction the player is already moving
+      let vel: [number, number] = [0, 0]
+      if (prevFrame) {
+        const prevPos = prevFrame.positions[id]
+        if (prevPos) {
+          vel = [(pos[0] - prevPos[0]) / DT, (pos[1] - prevPos[1]) / DT]
+        }
+      }
+      const ori = frame.orientations[id] ?? 0
       state[id] = { pos, vel, ori, team: player.team }
     }
     try {
@@ -198,7 +231,7 @@ export const useStore = create<LatticeStore>((set, get) => ({
         players: currentPlay.players,
         simulator: simEngine,
       })
-      set({ predictedPlay: result, simulating: false })
+      set({ predictedPlay: result, simulating: false, predictionFrame: 0, playing: true })
     } catch {
       set({ simulating: false })
     }

@@ -37,6 +37,7 @@ export function FunModeCamera() {
           minDistance={10}
           maxDistance={150}
           maxPolarAngle={Math.PI / 2.1}
+          autoRotate={false}
         />
       )}
     </>

@@ -22,7 +22,18 @@ export function DragPlane() {
         const fieldY = e.point.z + FIELD_HALF_WIDTH
         setDragOverride(selectedPlayer, [fieldX, fieldY])
       }}
-      onPointerUp={() => setDragging(false)}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (useStore.getState().cameraMode === 'ego') {
+          useStore.getState().setCameraMode('3d')
+          useStore.getState().setSelectedPlayer(null)
+          return
+        }
+        if (dragging) {
+          setDragging(false)
+          useStore.getState().setSelectedPlayer(null)
+        }
+      }}
     >
       <planeGeometry args={[200, 200]} />
       <meshBasicMaterial transparent opacity={0} depthWrite={false} />

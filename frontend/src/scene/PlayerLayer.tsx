@@ -80,34 +80,39 @@ function getPlayerPosition(play: PlayData, frameIndex: number, id: string): [num
 export function PlayerLayer() {
   const currentPlay = useStore((s) => s.currentPlay)
   const currentFrame = useStore((s) => s.currentFrame)
+  const predictedPlay = useStore((s) => s.predictedPlay)
+  const predictionFrame = useStore((s) => s.predictionFrame)
   const selectedPlayer = useStore((s) => s.selectedPlayer)
   const setSelectedPlayer = useStore((s) => s.setSelectedPlayer)
   const cameraMode = useStore((s) => s.cameraMode)
   const playing = useStore((s) => s.playing)
   const dragOverrides = useStore((s) => s.dragOverrides)
 
-  if (!currentPlay || !currentPlay.frames[currentFrame]) return null
+  const activePlay = predictedPlay || currentPlay
+  const activeFrame = predictedPlay ? predictionFrame : currentFrame
+
+  if (!currentPlay || !activePlay?.frames[activeFrame]) return null
 
   const playerEntries = Object.entries(currentPlay.players).filter(
     ([id]) => id !== 'ball',
   )
 
-  const ballOverride = dragOverrides['ball']
-  const ballPos = ballOverride || getPlayerPosition(currentPlay, currentFrame, 'ball')
-  const ballNextPos = !ballOverride ? getPlayerPosition(currentPlay, currentFrame + 1, 'ball') : undefined
-  const isDraggable = !playing
-  const ballPhase = getBallPhase(currentPlay, currentFrame)
-  const airborneProgress = getAirborneProgress(currentPlay, currentFrame)
+  const ballOverride = !predictedPlay ? dragOverrides['ball'] : undefined
+  const ballPos = ballOverride || getPlayerPosition(activePlay, activeFrame, 'ball')
+  const ballNextPos = !ballOverride ? getPlayerPosition(activePlay, activeFrame + 1, 'ball') : undefined
+  const isDraggable = !playing && !predictedPlay
+  const ballPhase = predictedPlay ? 'held' as BallPhase : getBallPhase(currentPlay, currentFrame)
+  const airborneProgress = predictedPlay ? 0 : getAirborneProgress(currentPlay, currentFrame)
 
   return (
     <group onClick={(e) => {
       if (e.object.type === 'Mesh' || e.object.type === 'Group') return
     }}>
       {playerEntries.map(([id, player]) => {
-        const override = dragOverrides[id]
-        const pos = override || getPlayerPosition(currentPlay, currentFrame, id)
+        const override = !predictedPlay ? dragOverrides[id] : undefined
+        const pos = override || getPlayerPosition(activePlay, activeFrame, id)
         if (!pos) return null
-        const nextPos = !override ? getPlayerPosition(currentPlay, currentFrame + 1, id) : undefined
+        const nextPos = !override ? getPlayerPosition(activePlay, activeFrame + 1, id) : undefined
         return (
           <PlayerTotem
             key={id}

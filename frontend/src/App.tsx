@@ -12,6 +12,8 @@ import { PosteriorPaths } from './scene/PosteriorPaths'
 import { StatsHUD } from './hud/StatsHUD'
 import { Controls } from './hud/Controls'
 import { FunModeOverlay } from './funmode/FunModeOverlay'
+import { SimOverlay } from './hud/SimOverlay'
+import { BootOverlay } from './hud/BootOverlay'
 import { FunModeCamera } from './funmode/FunModeCamera'
 import { samplePlay } from './data/samplePlay'
 import { fetchGames, fetchPlays, fetchPlay, fetchPlayStats } from './api'
@@ -98,6 +100,7 @@ export function App() {
               })),
               0,
             )
+            useStore.setState({ booting: false })
             return
           }
         }
@@ -105,6 +108,7 @@ export function App() {
         // Dataset not available, try mock
       }
       useStore.getState().loadPlay(samplePlay)
+      useStore.setState({ booting: false })
     }
     loadInitialPlay()
   }, [])
@@ -131,6 +135,8 @@ export function App() {
       <StatsHUD />
       <Controls />
       <FunModeOverlay />
+      <SimOverlay />
+      <BootOverlay />
       <StatsLoader />
     </div>
   )

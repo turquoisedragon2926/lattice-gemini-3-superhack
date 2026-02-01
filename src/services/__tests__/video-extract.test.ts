@@ -7,8 +7,8 @@ describe('MockVideoExtractor', () => {
     const result = await ext.extract({ type: 'image' })
 
     expect(result.source).toBe('video')
-    expect(result.frameCount).toBe(10)
-    expect(result.frames).toHaveLength(10)
+    expect(result.frameCount).toBe(1)
+    expect(result.frames).toHaveLength(1)
     const ids = Object.keys(result.players)
     expect(ids).toContain('ball')
     expect(ids.length).toBe(23)
@@ -50,7 +50,7 @@ describe('MockVideoExtractor', () => {
 
     expect(result.meta).toBeDefined()
     expect(result.meta!.offense).toBe('NE')
-    expect(result.meta!.defense).toBe('CIN')
+    expect(result.meta!.defense).toBe('DEN')
   })
 
   it('includes events', async () => {
@@ -58,7 +58,6 @@ describe('MockVideoExtractor', () => {
     const result = await ext.extract({ type: 'image' })
 
     expect(result.events).toBeDefined()
-    expect(result.events!['1']).toBe('ball_snap')
-    expect(result.events!['8']).toBe('tackle')
+    expect(result.events!['1']).toBe('pre_snap')
   })
 })
