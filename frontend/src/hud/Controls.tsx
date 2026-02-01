@@ -110,8 +110,10 @@ export function Controls() {
           </button>
           <button
             className={`${styles.btn} ${cameraMode === 'ego' ? styles.btnActive : ''}`}
-            onClick={() => setCameraMode('ego')}
-            disabled={locked}
+            onClick={() => {
+              const current = useStore.getState().cameraMode
+              setCameraMode(current === 'ego' ? '3d' : 'ego')
+            }}
             title="First-person view — click a player"
           >
             EGO

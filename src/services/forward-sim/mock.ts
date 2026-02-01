@@ -64,8 +64,11 @@ export class MockForwardSimulator implements ForwardSimulator {
         const drift = driftParams[id]
         const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
 
+        // Stop players that have reached the field boundary
+        const atBoundary = p.x <= 0.5 || p.x >= 119.5 || p.y <= 0.5 || p.y >= 52.8
+
         // Add lateral drift proportional to speed (so stationary players don't wander)
-        if (drift && speed > 0.5) {
+        if (drift && speed > 0.5 && !atBoundary) {
           const t = i * DT
           const lateralAccel = Math.sin(drift.freq * t + drift.phase) * DRIFT_STRENGTH
           // Perpendicular to velocity direction
@@ -77,6 +80,12 @@ export class MockForwardSimulator implements ForwardSimulator {
           // Random velocity noise (Gaussian, scaled by current speed)
           p.vx += randn() * NOISE_VELOCITY * DT
           p.vy += randn() * NOISE_VELOCITY * DT
+        }
+
+        if (atBoundary) {
+          // Freeze players at the boundary
+          p.vx = 0
+          p.vy = 0
         }
 
         // Integrate position

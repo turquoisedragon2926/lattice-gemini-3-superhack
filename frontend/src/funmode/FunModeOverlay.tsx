@@ -82,6 +82,7 @@ export function FunModeOverlay() {
       ])
 
       loadPlay(playData)
+      useStore.getState().setPlaybackSpeed(0.1)
       setFunCameraPose(cameraPose)
       setFunPhase('revealing')
     } catch (err: any) {
@@ -120,6 +121,7 @@ export function FunModeOverlay() {
     try {
       const playData = await extractVideo({ type: 'video', url: trimmed }, 'gemini')
       loadPlay(playData)
+      useStore.getState().setPlaybackSpeed(0.1)
       setFunPhase('interactive')
     } catch (err: any) {
       setError(err.message || 'Extraction failed')

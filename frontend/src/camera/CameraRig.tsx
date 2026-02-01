@@ -207,8 +207,8 @@ export function CameraRig() {
         minDistance={5}
         maxDistance={150}
         maxPolarAngle={Math.PI / 2.1}
-        enableRotate={cameraMode !== 'top' && !funModeActive}
-        enabled={!funModeActive}
+        enableRotate={cameraMode === '3d' && !funModeActive}
+        enabled={cameraMode === '3d' && !funModeActive}
       />
     </>
   )

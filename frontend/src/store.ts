@@ -196,7 +196,7 @@ export const useStore = create<LatticeStore>((set, get) => ({
     set({ dragOverrides: {}, predictedPlay: null, predictionFrame: 0, forkFrame: null, playing: false, currentFrame: forkFrame ?? get().currentFrame })
   },
 
-  setSimEngine: (e) => set({ simEngine: e }),
+  setSimEngine: (e) => set({ simEngine: e, playbackSpeed: e === 'gemini' ? 0.1 : 1 }),
 
   runSimulation: async () => {
     const { currentPlay, currentFrame, dragOverrides, simEngine } = get()
@@ -207,15 +207,16 @@ export const useStore = create<LatticeStore>((set, get) => ({
     const DT = 0.1 // 10 Hz tracking data
     const state: Record<string, { pos: [number, number]; vel: [number, number]; ori: number; team: string }> = {}
     for (const [id, player] of Object.entries(currentPlay.players)) {
+      const isDragged = !!dragOverrides[id]
       const pos = dragOverrides[id] || frame.positions[id]
       if (!pos) continue
-      // Compute velocity from position delta so predicted trajectories
-      // visually continue in the direction the player is already moving
-      let vel: [number, number] = [0, 0]
-      if (prevFrame) {
-        const prevPos = prevFrame.positions[id]
-        if (prevPos) {
-          vel = [(pos[0] - prevPos[0]) / DT, (pos[1] - prevPos[1]) / DT]
+      let vel: [number, number] = frame.velocities[id] || [0, 0]
+      // For dragged players, compute velocity from drag offset so trajectory
+      // continues in the direction they were moved
+      if (isDragged && prevFrame) {
+        const origPos = frame.positions[id]
+        if (origPos) {
+          vel = [(pos[0] - origPos[0]) / DT, (pos[1] - origPos[1]) / DT]
         }
       }
       const ori = frame.orientations[id] ?? 0
@@ -226,12 +227,12 @@ export const useStore = create<LatticeStore>((set, get) => ({
         gameId: currentPlay.gameId,
         playId: currentPlay.playId,
         frameId: frame.id,
-        horizon: 20,
+        horizon: 10,
         state,
         players: currentPlay.players,
         simulator: simEngine,
       })
-      set({ predictedPlay: result, simulating: false, predictionFrame: 0, playing: true })
+      set({ predictedPlay: result, simulating: false, predictionFrame: 0, playing: true, playbackSpeed: simEngine === 'gemini' ? 0.1 : get().playbackSpeed })
     } catch {
       set({ simulating: false })
     }
@@ -242,7 +243,9 @@ export const useStore = create<LatticeStore>((set, get) => ({
     if (!currentPlay) return
     set({ beliefEngineRunning: true, forkFrame: currentFrame, beliefEngineResult: null })
     try {
-      const stats = await fetchPlayStats(currentPlay, simEngine, currentFrame)
+      // TODO: Gemini disabled for Analyze — would launch ~600 API calls (20 sims × 30 frames)
+      const engine = simEngine === 'gemini' ? 'mock' : simEngine
+      const stats = await fetchPlayStats(currentPlay, engine, currentFrame)
       set({ beliefEngineResult: stats, beliefEngineRunning: false, playStats: stats })
     } catch {
       set({ beliefEngineRunning: false })

@@ -56,7 +56,7 @@ Return **only** valid JSON — an array of frame objects. Each frame:
 ## Guidelines
 
 - Predict realistic NFL movement — not random jitter, not frozen in place
-- Short predictions (10–20 frames = 1–2 seconds) should look physically plausible
+- Predictions will typically be 10 frames (1 second). Keep output concise — exactly `horizon` frames, no more
 - Offensive players generally move toward positive-x (toward the endzone they're attacking)
 - If a play appears post-snap, expect dynamic movement. If pre-snap, expect minimal movement.
 - Prioritize getting the general trajectory shape right over exact numerical precision

@@ -30,7 +30,7 @@ export class GeminiForwardSimulator implements ForwardSimulator {
         { role: 'user', parts: [{ text: PROMPT + '\n\n## Current State\n\n```json\n' + compactInput + '\n```' }] },
       ],
       config: {
-        thinkingConfig: { thinkingLevel: 'HIGH' as any },
+        thinkingConfig: { thinkingLevel: 'LOW' as any },
       },
     })
 
